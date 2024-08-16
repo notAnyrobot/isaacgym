@@ -15,9 +15,11 @@ A test of the simulation stability stacks of boxes with large mass ratio. There 
 - Inverted pyramid of boxes, they have the same density but the next level boxes are 4 times larger and 4*4*4 = 64 heavier than previous level one 
 """
 
-from isaacgym import gymutil
-from isaacgym import gymapi
 from math import sqrt
+
+from examples import ASSET_PATH, TEXTURE_PATH
+
+from isaacgym import gymapi, gymutil
 
 # initialize gym
 gym = gymapi.acquire_gym()
@@ -26,8 +28,19 @@ gym = gymapi.acquire_gym()
 args = gymutil.parse_arguments(
     description="Large Mass Ratio Test",
     custom_parameters=[
-        {"name": "--num_envs", "type": int, "default": 100, "help": "Number of environments to create"},
-        {"name": "--inverted_pyramid_test", "action": "store_true", "help": "Run test with stack of boxes of increasing sizes but the same density"}])
+        {
+            "name": "--num_envs",
+            "type": int,
+            "default": 100,
+            "help": "Number of environments to create",
+        },
+        {
+            "name": "--inverted_pyramid_test",
+            "action": "store_true",
+            "help": "Run test with stack of boxes of increasing sizes but the same density",
+        },
+    ],
+)
 
 inverted_pyramid_test = args.inverted_pyramid_test
 
@@ -54,7 +67,12 @@ sim_params.use_gpu_pipeline = False
 if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 
 if sim is None:
     print("*** Failed to create sim")
@@ -63,7 +81,7 @@ if sim is None:
 # create viewer using the default camera properties
 viewer = gym.create_viewer(sim, gymapi.CameraProperties())
 if viewer is None:
-    raise ValueError('*** Failed to create viewer')
+    raise ValueError("*** Failed to create viewer")
 
 # add ground plane
 plane_params = gymapi.PlaneParams()
@@ -109,7 +127,9 @@ if not inverted_pyramid_test:
 
     for dx in range(stack_height):
         asset_options.density = box_density
-        asset_box = gym.create_box(sim, box_size, box_size, box_size, asset_options)
+        asset_box = gym.create_box(
+            sim, box_size, box_size, box_size, asset_options
+        )
         box_handles.append(asset_box)
         box_density *= 10
 
@@ -123,10 +143,28 @@ if not inverted_pyramid_test:
 
         # add moving boxes to env
         for b in range(stack_height):
-            name = 'box_{}'.format(b)
-            actor_handles.append(gym.create_actor(env, box_handles[b], gymapi.Transform(
-                p=gymapi.Vec3(0., 0.5 * box_size + (box_size + displacement) * b + 0.001, 0.)), name, i, 0))
-            gym.set_rigid_body_color(env, actor_handles[-1], 0, gymapi.MESH_VISUAL, box_color)
+            name = "box_{}".format(b)
+            actor_handles.append(
+                gym.create_actor(
+                    env,
+                    box_handles[b],
+                    gymapi.Transform(
+                        p=gymapi.Vec3(
+                            0.0,
+                            0.5 * box_size
+                            + (box_size + displacement) * b
+                            + 0.001,
+                            0.0,
+                        )
+                    ),
+                    name,
+                    i,
+                    0,
+                )
+            )
+            gym.set_rigid_body_color(
+                env, actor_handles[-1], 0, gymapi.MESH_VISUAL, box_color
+            )
             box_color.x += 0.85 * color_step * b
             box_color.y -= color_step * b
             box_color.z -= 0.04 * b
@@ -138,12 +176,14 @@ else:
     new_box_size = box_size
     for dx in range(stack_height):
         asset_options.density = 100
-        asset_box = gym.create_box(sim, new_box_size, new_box_size, new_box_size, asset_options)
+        asset_box = gym.create_box(
+            sim, new_box_size, new_box_size, new_box_size, asset_options
+        )
         box_handles.append(asset_box)
         box_sizes.append(new_box_size)
         new_box_size *= scale_factor
 
-    print('Creating %d environments' % num_envs)
+    print("Creating %d environments" % num_envs)
     for i in range(num_envs):
         # create env
         env = gym.create_env(sim, env_lower, env_upper, num_per_row)
@@ -156,14 +196,25 @@ else:
 
         # add moving boxes to env
         for b in range(stack_height):
-            name = 'box_{}'.format(b)
-            start_height += (0.5 * box_sizes[b] + displacement)
-            actor_handles.append(gym.create_actor(env, box_handles[b], gymapi.Transform(p=gymapi.Vec3(0., start_height, 0.)), name, i, 0))
+            name = "box_{}".format(b)
+            start_height += 0.5 * box_sizes[b] + displacement
+            actor_handles.append(
+                gym.create_actor(
+                    env,
+                    box_handles[b],
+                    gymapi.Transform(p=gymapi.Vec3(0.0, start_height, 0.0)),
+                    name,
+                    i,
+                    0,
+                )
+            )
 
             box_color.x -= 0.9 * color_step * b
             box_color.y -= 0.02 * color_step * b
             box_color.z += 0.8 * color_step * b
-            gym.set_rigid_body_color(env, actor_handles[-1], 0, gymapi.MESH_VISUAL, box_color)
+            gym.set_rigid_body_color(
+                env, actor_handles[-1], 0, gymapi.MESH_VISUAL, box_color
+            )
 
             start_height += 0.5 * box_sizes[b]
 
@@ -181,7 +232,7 @@ while not gym.query_viewer_has_closed(viewer):
     # This synchronizes the physics simulation with the rendering rate.
     gym.sync_frame_time(sim)
 
-print('Done')
+print("Done")
 
 gym.destroy_viewer(viewer)
 gym.destroy_sim(sim)

@@ -15,10 +15,12 @@ collision filtering, and how to use the viewer to interact with
 the physics simulation.
 """
 
-import numpy as np
-from isaacgym import gymutil
-from isaacgym import gymapi
 from math import sqrt
+
+import numpy as np
+from examples import ASSET_PATH, TEXTURE_PATH
+
+from isaacgym import gymapi, gymutil
 
 # initialize gym
 gym = gymapi.acquire_gym()
@@ -27,7 +29,14 @@ gym = gymapi.acquire_gym()
 args = gymutil.parse_arguments(
     description="Projectiles Example: Press SPACE to fire a projectile. Press R to reset the simulation.",
     custom_parameters=[
-        {"name": "--num_envs", "type": int, "default": 16, "help": "Number of environments to create"}])
+        {
+            "name": "--num_envs",
+            "type": int,
+            "default": 16,
+            "help": "Number of environments to create",
+        }
+    ],
+)
 
 # configure sim
 sim_params = gymapi.SimParams()
@@ -45,7 +54,12 @@ sim_params.use_gpu_pipeline = False
 if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 
 if sim is None:
     print("*** Failed to create sim")
@@ -65,14 +79,16 @@ if viewer is None:
 # with the simulation
 gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_SPACE, "space_shoot")
 gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_R, "reset")
-gym.subscribe_viewer_mouse_event(viewer, gymapi.MOUSE_LEFT_BUTTON, "mouse_shoot")
+gym.subscribe_viewer_mouse_event(
+    viewer, gymapi.MOUSE_LEFT_BUTTON, "mouse_shoot"
+)
 
 # load asset
-asset_root = "../../assets"
+
 asset_file = "mjcf/nv_ant.xml"
 
 asset_options = gymapi.AssetOptions()
-asset = gym.load_asset(sim, asset_root, asset_file, asset_options)
+asset = gym.load_asset(sim, ASSET_PATH, asset_file, asset_options)
 
 # set up the grid of environments
 num_envs = args.num_envs
@@ -107,7 +123,7 @@ for i in range(num_envs):
 # 20 projectiles which will be cycled
 proj_env = gym.create_env(sim, lower, upper, 4)
 proj_asset_options = gymapi.AssetOptions()
-proj_asset_options.density = 10.
+proj_asset_options.density = 10.0
 proj_asset = gym.create_box(sim, 0.3, 0.3, 0.3, proj_asset_options)
 projectiles = []
 
@@ -117,11 +133,19 @@ for i in range(20):
     pose.r = gymapi.Quat(0, 0, 0, 1)
 
     # create actors which will collide with actors in any environment
-    ahandle = gym.create_actor(proj_env, proj_asset, pose, "projectile" + str(i), -1, 0)
+    ahandle = gym.create_actor(
+        proj_env, proj_asset, pose, "projectile" + str(i), -1, 0
+    )
 
     # set each projectile to a different, random color
     c = 0.5 + 0.5 * np.random.random(3)
-    gym.set_rigid_body_color(proj_env, ahandle, 0, gymapi.MESH_VISUAL_AND_COLLISION, gymapi.Vec3(c[0], c[1], c[2]))
+    gym.set_rigid_body_color(
+        proj_env,
+        ahandle,
+        0,
+        gymapi.MESH_VISUAL_AND_COLLISION,
+        gymapi.Vec3(c[0], c[1], c[2]),
+    )
 
     projectiles.append(ahandle)
 
@@ -142,13 +166,17 @@ while not gym.query_viewer_has_closed(viewer):
         if evt.action == "reset" and evt.value > 0:
             gym.set_sim_rigid_body_states(sim, initial_state, gymapi.STATE_ALL)
 
-        elif (evt.action == "space_shoot" or evt.action == "mouse_shoot") and evt.value > 0:
+        elif (
+            evt.action == "space_shoot" or evt.action == "mouse_shoot"
+        ) and evt.value > 0:
             if evt.action == "mouse_shoot":
                 pos = gym.get_viewer_mouse_position(viewer)
                 window_size = gym.get_viewer_size(viewer)
                 xcoord = round(pos.x * window_size.x)
                 ycoord = round(pos.y * window_size.y)
-                print(f"Fired projectile with mouse at coords: {xcoord} {ycoord}")
+                print(
+                    f"Fired projectile with mouse at coords: {xcoord} {ycoord}"
+                )
 
             cam_pose = gym.get_viewer_camera_transform(viewer, proj_env)
             cam_fwd = cam_pose.r.rotate(gymapi.Vec3(0, 0, 1))
@@ -160,12 +188,16 @@ while not gym.query_viewer_has_closed(viewer):
             angvel = 1.57 - 3.14 * np.random.random(3)
 
             proj_handle = projectiles[proj_index]
-            state = gym.get_actor_rigid_body_states(proj_env, proj_handle, gymapi.STATE_NONE)
-            state['pose']['p'].fill((spawn.x, spawn.y, spawn.z))
-            state['pose']['r'].fill((0, 0, 0, 1))
-            state['vel']['linear'].fill((vel.x, vel.y, vel.z))
-            state['vel']['angular'].fill((angvel[0], angvel[1], angvel[2]))
-            gym.set_actor_rigid_body_states(proj_env, proj_handle, state, gymapi.STATE_ALL)
+            state = gym.get_actor_rigid_body_states(
+                proj_env, proj_handle, gymapi.STATE_NONE
+            )
+            state["pose"]["p"].fill((spawn.x, spawn.y, spawn.z))
+            state["pose"]["r"].fill((0, 0, 0, 1))
+            state["vel"]["linear"].fill((vel.x, vel.y, vel.z))
+            state["vel"]["angular"].fill((angvel[0], angvel[1], angvel[2]))
+            gym.set_actor_rigid_body_states(
+                proj_env, proj_handle, state, gymapi.STATE_ALL
+            )
 
             proj_index = (proj_index + 1) % len(projectiles)
 

@@ -13,7 +13,10 @@ Actor Scaling
 """
 
 import math
+
 import numpy as np
+from examples import ASSET_PATH
+
 from isaacgym import gymapi, gymutil
 
 
@@ -36,10 +39,25 @@ asset_descriptors = [
 args = gymutil.parse_arguments(
     description="Actor scaling. Demonstrates runtime scaling of actors",
     custom_parameters=[
-        {"name": "--min_scale", "type": float, "default": 0.5, "help": "Lower scale value"},
-        {"name": "--max_scale", "type": float, "default": 2.0, "help": "Upper scale value"},
-        {"name": "--num_columns", "type": int, "default": 4, "help": "Number of actors from the same asset in one row"}
-    ]
+        {
+            "name": "--min_scale",
+            "type": float,
+            "default": 0.5,
+            "help": "Lower scale value",
+        },
+        {
+            "name": "--max_scale",
+            "type": float,
+            "default": 2.0,
+            "help": "Upper scale value",
+        },
+        {
+            "name": "--num_columns",
+            "type": int,
+            "default": 4,
+            "help": "Number of actors from the same asset in one row",
+        },
+    ],
 )
 
 # initialize gym
@@ -61,7 +79,12 @@ sim_params.use_gpu_pipeline = False
 if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 
 # add ground plane
 plane_params = gymapi.PlaneParams()
@@ -74,7 +97,6 @@ if viewer is None:
     quit()
 
 # load asset
-asset_root = "../../assets"
 
 
 assets = []
@@ -86,8 +108,8 @@ for asset_desc in asset_descriptors:
     asset_options.flip_visual_attachments = asset_desc.flip_visual_attachments
     asset_options.use_mesh_materials = True
 
-    print("Loading asset '%s' from '%s'" % (asset_file, asset_root))
-    assets.append(gym.load_asset(sim, asset_root, asset_file, asset_options))
+    print("Loading asset '%s' from '%s'" % (asset_file, ASSET_PATH))
+    assets.append(gym.load_asset(sim, ASSET_PATH, asset_file, asset_options))
 
 # set up the env grid
 spacing = 1
@@ -107,7 +129,10 @@ scale_range = args.max_scale - args.min_scale
 if args.num_columns == 1:
     scales = [args.min_scale]
 else:
-    scales = [args.min_scale + scale_range * c / (args.num_columns - 1) for c in range(args.num_columns)]
+    scales = [
+        args.min_scale + scale_range * c / (args.num_columns - 1)
+        for c in range(args.num_columns)
+    ]
 
 for i, asset in enumerate(assets):
     for scale in scales:

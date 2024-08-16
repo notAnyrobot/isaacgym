@@ -14,19 +14,19 @@ This example shows how to apply rigid body forces at given positions using the t
 
 """
 
-from isaacgym import gymutil
-from isaacgym import gymapi
-from isaacgym import gymtorch
-
 import numpy as np
 import torch
+from examples import ASSET_PATH
+
+from isaacgym import gymapi, gymtorch, gymutil
 
 # initialize gym
 gym = gymapi.acquire_gym()
 
 # parse arguments
 args = gymutil.parse_arguments(
-    description="Example of applying forces to bodies at given positions")
+    description="Example of applying forces to bodies at given positions"
+)
 
 # configure sim
 sim_params = gymapi.SimParams()
@@ -47,9 +47,14 @@ else:
     raise Exception("GPU pipeline is only available with PhysX")
 
 sim_params.use_gpu_pipeline = args.use_gpu_pipeline
-device = args.sim_device if args.use_gpu_pipeline else 'cpu'
+device = args.sim_device if args.use_gpu_pipeline else "cpu"
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 if sim is None:
     raise Exception("Failed to create sim")
 
@@ -64,12 +69,12 @@ if viewer is None:
     raise Exception("Failed to create viewer")
 
 # load ball asset
-asset_root = "../../assets"
+
 asset_file = "mjcf/nv_ant.xml"
-asset = gym.load_asset(sim, asset_root, asset_file, gymapi.AssetOptions())
+asset = gym.load_asset(sim, ASSET_PATH, asset_file, gymapi.AssetOptions())
 
 num_bodies = gym.get_asset_rigid_body_count(asset)
-print('num_bodies', num_bodies)
+print("num_bodies", num_bodies)
 
 # default pose
 pose = gymapi.Transform()
@@ -98,10 +103,14 @@ for i in range(num_envs):
 
     ahandle = gym.create_actor(env, asset, pose, "actor", i, 1)
     handles.append(ahandle)
-    gym.set_rigid_body_color(env, ahandle, 0, gymapi.MESH_VISUAL_AND_COLLISION, color)
+    gym.set_rigid_body_color(
+        env, ahandle, 0, gymapi.MESH_VISUAL_AND_COLLISION, color
+    )
 
 mid = 0.5 * env_spacing * (num_per_row - 1)
-gym.viewer_camera_look_at(viewer, None, gymapi.Vec3(20, mid, 5), gymapi.Vec3(0, mid, 1))
+gym.viewer_camera_look_at(
+    viewer, None, gymapi.Vec3(20, mid, 5), gymapi.Vec3(0, mid, 1)
+)
 
 gym.prepare_sim(sim)
 
@@ -119,11 +128,18 @@ while not gym.query_viewer_has_closed(viewer):
         gym.refresh_rigid_body_state_tensor(sim)
 
         # set forces and force positions for ant root bodies (first body in each env)
-        forces = torch.zeros((num_envs, num_bodies, 3), device=device, dtype=torch.float)
+        forces = torch.zeros(
+            (num_envs, num_bodies, 3), device=device, dtype=torch.float
+        )
         force_positions = rb_positions.clone()
         forces[:, 0, 2] = 400
         force_positions[:, 0, 1] += force_offset
-        gym.apply_rigid_body_force_at_pos_tensors(sim, gymtorch.unwrap_tensor(forces), gymtorch.unwrap_tensor(force_positions), gymapi.ENV_SPACE)
+        gym.apply_rigid_body_force_at_pos_tensors(
+            sim,
+            gymtorch.unwrap_tensor(forces),
+            gymtorch.unwrap_tensor(force_positions),
+            gymapi.ENV_SPACE,
+        )
 
         force_offset = -force_offset
 

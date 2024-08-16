@@ -13,28 +13,34 @@ Kuka bin perfromance test
 Test simulation perfromance and stability of the robotic arm dealing with a set of complex objects in a bin.
 """
 
-from __future__ import print_function, division, absolute_import
+from __future__ import absolute_import, division, print_function
 
-import os
 import math
-import numpy as np
-from isaacgym import gymapi
-from isaacgym import gymutil
+import os
 from copy import copy
+
+import numpy as np
+from examples import ASSET_PATH, TEXTURE_PATH
+
+from isaacgym import gymapi, gymutil
 
 axes_geom = gymutil.AxesGeometry(0.1)
 
 sphere_rot = gymapi.Quat.from_euler_zyx(0.5 * math.pi, 0, 0)
 sphere_pose = gymapi.Transform(r=sphere_rot)
-sphere_geom = gymutil.WireframeSphereGeometry(0.03, 12, 12, sphere_pose, color=(1, 0, 0))
+sphere_geom = gymutil.WireframeSphereGeometry(
+    0.03, 12, 12, sphere_pose, color=(1, 0, 0)
+)
 
-colors = [gymapi.Vec3(1.0, 0.0, 0.0),
-          gymapi.Vec3(1.0, 127.0/255.0, 0.0),
-          gymapi.Vec3(1.0, 1.0, 0.0),
-          gymapi.Vec3(0.0, 1.0, 0.0),
-          gymapi.Vec3(0.0, 0.0, 1.0),
-          gymapi.Vec3(39.0/255.0, 0.0, 51.0/255.0),
-          gymapi.Vec3(139.0/255.0, 0.0, 1.0)]
+colors = [
+    gymapi.Vec3(1.0, 0.0, 0.0),
+    gymapi.Vec3(1.0, 127.0 / 255.0, 0.0),
+    gymapi.Vec3(1.0, 1.0, 0.0),
+    gymapi.Vec3(0.0, 1.0, 0.0),
+    gymapi.Vec3(0.0, 0.0, 1.0),
+    gymapi.Vec3(39.0 / 255.0, 0.0, 51.0 / 255.0),
+    gymapi.Vec3(139.0 / 255.0, 0.0, 1.0),
+]
 
 tray_color = gymapi.Vec3(0.24, 0.35, 0.8)
 banana_color = gymapi.Vec3(0.85, 0.88, 0.2)
@@ -48,9 +54,26 @@ gym = gymapi.acquire_gym()
 args = gymutil.parse_arguments(
     description="Kuka Bin Test",
     custom_parameters=[
-        {"name": "--num_envs", "type": int, "default": 16, "help": "Number of environments to create"},
-        {"name": "--num_objects", "type": int, "default": 10, "help": "Number of objects in the bin"},
-        {"name": "--object_type", "type": int, "default": 0, "help": "Type of bjects to place in the bin: 0 - box, 1 - meat can, 2 - banana, 3 - mug, 4 - brick, 5 - random"}])
+        {
+            "name": "--num_envs",
+            "type": int,
+            "default": 16,
+            "help": "Number of environments to create",
+        },
+        {
+            "name": "--num_objects",
+            "type": int,
+            "default": 10,
+            "help": "Number of objects in the bin",
+        },
+        {
+            "name": "--object_type",
+            "type": int,
+            "default": 0,
+            "help": "Type of bjects to place in the bin: 0 - box, 1 - meat can, 2 - banana, 3 - mug, 4 - brick, 5 - random",
+        },
+    ],
+)
 
 num_envs = args.num_envs
 num_objects = args.num_objects
@@ -79,7 +102,9 @@ sim_params.use_gpu_pipeline = False
 if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, sim_type, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id, args.graphics_device_id, sim_type, sim_params
+)
 if sim is None:
     print("*** Failed to create sim")
     quit()
@@ -95,7 +120,7 @@ if viewer is None:
     quit()
 
 # load assets
-asset_root = "../../assets"
+
 
 table_dims = gymapi.Vec3(0.6, 0.4, 1.0)
 
@@ -118,7 +143,9 @@ bin_pose.r = gymapi.Quat(-0.707107, 0.0, 0.0, 0.707107)
 
 object_pose = gymapi.Transform()
 
-table_asset = gym.create_box(sim, table_dims.x, table_dims.y, table_dims.z, asset_options)
+table_asset = gym.create_box(
+    sim, table_dims.x, table_dims.y, table_dims.z, asset_options
+)
 
 # load assets of objects in a bin
 asset_options.fix_base_link = False
@@ -136,23 +163,33 @@ object_files.append(object_files)
 
 object_assets = []
 
-object_assets.append(gym.create_box(sim, box_size, box_size, box_size, asset_options))
-object_assets.append(gym.load_asset(sim, asset_root, can_asset_file, asset_options))
-object_assets.append(gym.load_asset(sim, asset_root, banana_asset_file, asset_options))
-object_assets.append(gym.load_asset(sim, asset_root, mug_asset_file, asset_options))
-object_assets.append(gym.load_asset(sim, asset_root, brick_asset_file, asset_options))
+object_assets.append(
+    gym.create_box(sim, box_size, box_size, box_size, asset_options)
+)
+object_assets.append(
+    gym.load_asset(sim, ASSET_PATH, can_asset_file, asset_options)
+)
+object_assets.append(
+    gym.load_asset(sim, ASSET_PATH, banana_asset_file, asset_options)
+)
+object_assets.append(
+    gym.load_asset(sim, ASSET_PATH, mug_asset_file, asset_options)
+)
+object_assets.append(
+    gym.load_asset(sim, ASSET_PATH, brick_asset_file, asset_options)
+)
 
 spawn_height = gymapi.Vec3(0.0, 0.3, 0.0)
 
 # load bin asset
 bin_asset_file = "urdf/tray/traybox.urdf"
 
-print("Loading asset '%s' from '%s'" % (bin_asset_file, asset_root))
-bin_asset = gym.load_asset(sim, asset_root, bin_asset_file, asset_options)
+print("Loading asset '%s' from '%s'" % (bin_asset_file, ASSET_PATH))
+bin_asset = gym.load_asset(sim, ASSET_PATH, bin_asset_file, asset_options)
 
 corner = table_pose.p - table_dims * 0.5
 
-asset_root = "../../assets"
+
 kuka_asset_file = "urdf/kuka_allegro_description/kuka_allegro.urdf"
 
 asset_options.fix_base_link = True
@@ -161,10 +198,10 @@ asset_options.collapse_fixed_joints = True
 asset_options.disable_gravity = True
 
 if sim_type == gymapi.SIM_FLEX:
-    asset_options.max_angular_velocity = 40.
+    asset_options.max_angular_velocity = 40.0
 
-print("Loading asset '%s' from '%s'" % (kuka_asset_file, asset_root))
-kuka_asset = gym.load_asset(sim, asset_root, kuka_asset_file, asset_options)
+print("Loading asset '%s' from '%s'" % (kuka_asset_file, ASSET_PATH))
+kuka_asset = gym.load_asset(sim, ASSET_PATH, kuka_asset_file, asset_options)
 
 # set up the env grid
 spacing = 1.5
@@ -178,8 +215,16 @@ tray_handles = []
 object_handles = []
 
 # Attractors setup
-kuka_attractors = ["iiwa7_link_7"]  # , "thumb_link_3", "index_link_3", "middle_link_3", "ring_link_3"]
-attractors_offsets = [gymapi.Transform(), gymapi.Transform(), gymapi.Transform(), gymapi.Transform(), gymapi.Transform()]
+kuka_attractors = [
+    "iiwa7_link_7"
+]  # , "thumb_link_3", "index_link_3", "middle_link_3", "ring_link_3"]
+attractors_offsets = [
+    gymapi.Transform(),
+    gymapi.Transform(),
+    gymapi.Transform(),
+    gymapi.Transform(),
+    gymapi.Transform(),
+]
 
 # Coordinates to offset attractors to tips of fingers
 # thumb
@@ -210,7 +255,9 @@ for i in range(num_envs):
     bin_pose.p = gymapi.Vec3(x, y, z)
     tray_handles.append(gym.create_actor(env, bin_asset, bin_pose, "bin", i, 0))
 
-    gym.set_rigid_body_color(env, tray_handles[-1], 0, gymapi.MESH_VISUAL_AND_COLLISION, tray_color)
+    gym.set_rigid_body_color(
+        env, tray_handles[-1], 0, gymapi.MESH_VISUAL_AND_COLLISION, tray_color
+    )
 
     for j in range(num_objects):
         x = corner.x + table_dims.x * 0.5 + np.random.rand() * 0.35 - 0.2
@@ -225,16 +272,46 @@ for i in range(num_envs):
         else:
             object_asset = object_assets[args.object_type]
 
-        object_handles.append(gym.create_actor(env, object_asset, object_pose, "object" + str(j), i, 0))
+        object_handles.append(
+            gym.create_actor(
+                env, object_asset, object_pose, "object" + str(j), i, 0
+            )
+        )
 
         if args.object_type == 2:
-            color = gymapi.Vec3(banana_color.x + np.random.rand()*0.1, banana_color.y + np.random.rand()*0.05, banana_color.z)
-            gym.set_rigid_body_color(env, object_handles[-1], 0, gymapi.MESH_VISUAL_AND_COLLISION, color)
+            color = gymapi.Vec3(
+                banana_color.x + np.random.rand() * 0.1,
+                banana_color.y + np.random.rand() * 0.05,
+                banana_color.z,
+            )
+            gym.set_rigid_body_color(
+                env,
+                object_handles[-1],
+                0,
+                gymapi.MESH_VISUAL_AND_COLLISION,
+                color,
+            )
         elif args.object_type == 4:
-            color = gymapi.Vec3(brick_color.x + np.random.rand()*0.1, brick_color.y + np.random.rand()*0.04, brick_color.z + np.random.rand()*0.05)
-            gym.set_rigid_body_color(env, object_handles[-1], 0, gymapi.MESH_VISUAL_AND_COLLISION, color)
+            color = gymapi.Vec3(
+                brick_color.x + np.random.rand() * 0.1,
+                brick_color.y + np.random.rand() * 0.04,
+                brick_color.z + np.random.rand() * 0.05,
+            )
+            gym.set_rigid_body_color(
+                env,
+                object_handles[-1],
+                0,
+                gymapi.MESH_VISUAL_AND_COLLISION,
+                color,
+            )
         else:
-            gym.set_rigid_body_color(env, object_handles[-1], 0, gymapi.MESH_VISUAL_AND_COLLISION, colors[j % len(colors)])
+            gym.set_rigid_body_color(
+                env,
+                object_handles[-1],
+                0,
+                gymapi.MESH_VISUAL_AND_COLLISION,
+                colors[j % len(colors)],
+            )
 
     # add kuka
     kuka_handle = gym.create_actor(env, kuka_asset, pose, "kuka", i, 1)
@@ -248,7 +325,7 @@ for i in range(num_envs):
         attractor_properties.stiffness = 1e6
         attractor_properties.damping = 5e2
         body_handle = gym.find_actor_rigid_body_handle(env, kuka_handle, body)
-        attractor_properties.target = props['pose'][:][body_dict[body]]
+        attractor_properties.target = props["pose"][:][body_dict[body]]
         attractor_properties.target.p.y -= 0.15
 
         # By Default, offset pose is set to origin, so no need to set it
@@ -265,25 +342,31 @@ for i in range(num_envs):
         # attractor_properties.target.p.z=0.1
         attractor_properties.rigid_handle = body_handle
 
-        gymutil.draw_lines(axes_geom, gym, viewer, env, attractor_properties.target)
-        gymutil.draw_lines(sphere_geom, gym, viewer, env, attractor_properties.target)
+        gymutil.draw_lines(
+            axes_geom, gym, viewer, env, attractor_properties.target
+        )
+        gymutil.draw_lines(
+            sphere_geom, gym, viewer, env, attractor_properties.target
+        )
 
-        attractor_handle = gym.create_rigid_body_attractor(env, attractor_properties)
+        attractor_handle = gym.create_rigid_body_attractor(
+            env, attractor_properties
+        )
         attractor_handles[i].append(attractor_handle)
 
     kuka_handles.append(kuka_handle)
 
 # get joint limits and ranges for kuka
 kuka_dof_props = gym.get_actor_dof_properties(envs[0], kuka_handles[0])
-kuka_lower_limits = kuka_dof_props['lower']
-kuka_upper_limits = kuka_dof_props['upper']
+kuka_lower_limits = kuka_dof_props["lower"]
+kuka_upper_limits = kuka_dof_props["upper"]
 kuka_ranges = kuka_upper_limits - kuka_lower_limits
 kuka_mids = 0.5 * (kuka_upper_limits + kuka_lower_limits)
 kuka_num_dofs = len(kuka_dof_props)
 
 # override default stiffness and damping values
-kuka_dof_props['stiffness'].fill(100.0)
-kuka_dof_props['damping'].fill(100.0)
+kuka_dof_props["stiffness"].fill(100.0)
+kuka_dof_props["damping"].fill(100.0)
 
 # Set base to track pose zero to maintain posture
 kuka_dof_props["driveMode"][0] = gymapi.DOF_MODE_POS
@@ -299,31 +382,55 @@ def init():
         # set updated stiffness and damping properties
         gym.set_actor_dof_properties(envs[i], kuka_handles[i], kuka_dof_props)
 
-        kuka_dof_states = gym.get_actor_dof_states(envs[i], kuka_handles[i], gymapi.STATE_NONE)
+        kuka_dof_states = gym.get_actor_dof_states(
+            envs[i], kuka_handles[i], gymapi.STATE_NONE
+        )
         for j in range(kuka_num_dofs):
-            kuka_dof_states['pos'][j] = kuka_mids[j] - kuka_mids[j] * .5
-        gym.set_actor_dof_states(envs[i], kuka_handles[i], kuka_dof_states, gymapi.STATE_POS)
+            kuka_dof_states["pos"][j] = kuka_mids[j] - kuka_mids[j] * 0.5
+        gym.set_actor_dof_states(
+            envs[i], kuka_handles[i], kuka_dof_states, gymapi.STATE_POS
+        )
 
 
 def update_kuka(t):
     gym.clear_lines(viewer)
     for i in range(num_envs):
         for j in range(len(attractor_handles[i])):
-            attractor_properties = gym.get_attractor_properties(envs[i], attractor_handles[i][j])
+            attractor_properties = gym.get_attractor_properties(
+                envs[i], attractor_handles[i][j]
+            )
             attr_pose = copy(base_poses[j])
-            attr_pose.p.z += 0.2 * np.cos(1.5*t - np.pi*float(i) / num_envs)
+            attr_pose.p.z += 0.2 * np.cos(1.5 * t - np.pi * float(i) / num_envs)
             if j == 0:
-                attr_pose.p.x += 0.2 * np.sin(1.5*t - np.pi*float(i) / num_envs)
-                attr_pose.p.y += 0.08 * np.cos(2.5*t - np.pi*float(i) / num_envs)
+                attr_pose.p.x += 0.2 * np.sin(
+                    1.5 * t - np.pi * float(i) / num_envs
+                )
+                attr_pose.p.y += 0.08 * np.cos(
+                    2.5 * t - np.pi * float(i) / num_envs
+                )
             elif j == 1:
-                attr_pose.p.x = -0.05 + 0.2 * np.sin(1.5*t - np.pi*float(i) / num_envs)
-                attr_pose.p.y += 0.05 + 0.08 * np.cos(2.5*t - np.pi*float(i) / num_envs) + 0.01 * np.cos(5*t - np.pi*j/5)
-                attr_pose.p.z += 0.01 * np.cos(8*t - np.pi*j/5)
+                attr_pose.p.x = -0.05 + 0.2 * np.sin(
+                    1.5 * t - np.pi * float(i) / num_envs
+                )
+                attr_pose.p.y += (
+                    0.05
+                    + 0.08 * np.cos(2.5 * t - np.pi * float(i) / num_envs)
+                    + 0.01 * np.cos(5 * t - np.pi * j / 5)
+                )
+                attr_pose.p.z += 0.01 * np.cos(8 * t - np.pi * j / 5)
             else:
-                attr_pose.p.x = -0.05 + 0.2 * np.sin(1.5*t - np.pi*float(i) / num_envs)
-                attr_pose.p.y += -0.01 + 0.08 * np.cos(2.5*t - np.pi*float(i) / num_envs) + 0.01 * np.cos(5*t - np.pi*j/5)
+                attr_pose.p.x = -0.05 + 0.2 * np.sin(
+                    1.5 * t - np.pi * float(i) / num_envs
+                )
+                attr_pose.p.y += (
+                    -0.01
+                    + 0.08 * np.cos(2.5 * t - np.pi * float(i) / num_envs)
+                    + 0.01 * np.cos(5 * t - np.pi * j / 5)
+                )
 
-            gym.set_attractor_target(envs[i], attractor_handles[i][j], attr_pose)
+            gym.set_attractor_target(
+                envs[i], attractor_handles[i][j], attr_pose
+            )
             gymutil.draw_lines(axes_geom, gym, viewer, envs[i], attr_pose)
             gymutil.draw_lines(sphere_geom, gym, viewer, envs[i], attr_pose)
 
@@ -344,8 +451,8 @@ while not gym.query_viewer_has_closed(viewer):
     gym.simulate(sim)
     gym.fetch_results(sim, True)
 
-#    for env in envs:
-#        gym.draw_env_rigid_contacts(viewer, env, colors[0], 0.5, True)
+    #    for env in envs:
+    #        gym.draw_env_rigid_contacts(viewer, env, colors[0], 0.5, True)
 
     # step rendering
     gym.step_graphics(sim)

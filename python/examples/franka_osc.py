@@ -13,14 +13,14 @@ Franka Operational Space Control
 Operational Space Control of Franka robot to demonstrate Jacobian and Mass Matrix Tensor APIs
 """
 
-from isaacgym import gymapi
-from isaacgym import gymutil
-from isaacgym import gymtorch
-from isaacgym.torch_utils import *
-
 import math
+
 import numpy as np
 import torch
+from examples import ASSET_PATH, TEXTURE_PATH
+from isaacgym.torch_utils import *
+
+from isaacgym import gymapi, gymtorch, gymutil
 
 
 def orientation_error(desired, current):
@@ -30,11 +30,31 @@ def orientation_error(desired, current):
 
 
 # Parse arguments
-args = gymutil.parse_arguments(description="Franka Tensor OSC Example",
-                               custom_parameters=[
-                                   {"name": "--num_envs", "type": int, "default": 256, "help": "Number of environments to create"},
-                                   {"name": "--pos_control", "type": gymutil.parse_bool, "const": True, "default": True, "help": "Trace circular path in XZ plane"},
-                                   {"name": "--orn_control", "type": gymutil.parse_bool, "const": True, "default": False, "help": "Send random orientation commands"}])
+args = gymutil.parse_arguments(
+    description="Franka Tensor OSC Example",
+    custom_parameters=[
+        {
+            "name": "--num_envs",
+            "type": int,
+            "default": 256,
+            "help": "Number of environments to create",
+        },
+        {
+            "name": "--pos_control",
+            "type": gymutil.parse_bool,
+            "const": True,
+            "default": True,
+            "help": "Trace circular path in XZ plane",
+        },
+        {
+            "name": "--orn_control",
+            "type": gymutil.parse_bool,
+            "const": True,
+            "default": False,
+            "help": "Send random orientation commands",
+        },
+    ],
+)
 
 # Initialize gym
 gym = gymapi.acquire_gym()
@@ -56,7 +76,12 @@ else:
 
 sim_params.use_gpu_pipeline = args.use_gpu_pipeline
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 
 if sim is None:
     raise Exception("Failed to create sim")
@@ -72,7 +97,7 @@ plane_params.normal = gymapi.Vec3(0, 0, 1)
 gym.add_ground(sim, plane_params)
 
 # Load franka asset
-asset_root = "../../assets"
+
 franka_asset_file = "urdf/franka_description/robots/franka_panda.urdf"
 
 asset_options = gymapi.AssetOptions()
@@ -81,14 +106,13 @@ asset_options.flip_visual_attachments = True
 asset_options.armature = 0.01
 asset_options.disable_gravity = True
 
-print("Loading asset '%s' from '%s'" % (franka_asset_file, asset_root))
-franka_asset = gym.load_asset(
-    sim, asset_root, franka_asset_file, asset_options)
+print("Loading asset '%s' from '%s'" % (franka_asset_file, ASSET_PATH))
+franka_asset = gym.load_asset(sim, ASSET_PATH, franka_asset_file, asset_options)
 
 # get joint limits and ranges for Franka
 franka_dof_props = gym.get_asset_dof_properties(franka_asset)
-franka_lower_limits = franka_dof_props['lower']
-franka_upper_limits = franka_dof_props['upper']
+franka_lower_limits = franka_dof_props["lower"]
+franka_upper_limits = franka_dof_props["upper"]
 franka_ranges = franka_upper_limits - franka_lower_limits
 franka_mids = 0.5 * (franka_upper_limits + franka_lower_limits)
 franka_num_dofs = len(franka_dof_props)
@@ -135,19 +159,27 @@ for i in range(num_envs):
     franka_handle = gym.create_actor(env, franka_asset, pose, "franka", i, 1)
 
     # Set initial DOF states
-    gym.set_actor_dof_states(env, franka_handle, default_dof_state, gymapi.STATE_ALL)
+    gym.set_actor_dof_states(
+        env, franka_handle, default_dof_state, gymapi.STATE_ALL
+    )
 
     # Set DOF control properties
     gym.set_actor_dof_properties(env, franka_handle, franka_dof_props)
 
     # Get inital hand pose
-    hand_handle = gym.find_actor_rigid_body_handle(env, franka_handle, "panda_hand")
+    hand_handle = gym.find_actor_rigid_body_handle(
+        env, franka_handle, "panda_hand"
+    )
     hand_pose = gym.get_rigid_transform(env, hand_handle)
     init_pos_list.append([hand_pose.p.x, hand_pose.p.y, hand_pose.p.z])
-    init_orn_list.append([hand_pose.r.x, hand_pose.r.y, hand_pose.r.z, hand_pose.r.w])
+    init_orn_list.append(
+        [hand_pose.r.x, hand_pose.r.y, hand_pose.r.z, hand_pose.r.w]
+    )
 
     # Get global index of hand in rigid body state tensor
-    hand_idx = gym.find_actor_rigid_body_index(env, franka_handle, "panda_hand", gymapi.DOMAIN_SIM)
+    hand_idx = gym.find_actor_rigid_body_index(
+        env, franka_handle, "panda_hand", gymapi.DOMAIN_SIM
+    )
     hand_idxs.append(hand_idx)
 
 # Point camera at middle env
@@ -165,8 +197,8 @@ init_pos = torch.Tensor(init_pos_list).view(num_envs, 3)
 init_orn = torch.Tensor(init_orn_list).view(num_envs, 4)
 
 if args.use_gpu_pipeline:
-    init_pos = init_pos.to('cuda:0')
-    init_orn = init_orn.to('cuda:0')
+    init_pos = init_pos.to("cuda:0")
+    init_orn = init_orn.to("cuda:0")
 
 # desired hand positions and orientations
 pos_des = init_pos.clone()
@@ -238,7 +270,10 @@ while not gym.query_viewer_has_closed(viewer):
 
     dpose = torch.cat([pos_err, orn_err], -1)
 
-    u = torch.transpose(j_eef, 1, 2) @ m_eef @ (kp * dpose).unsqueeze(-1) - kv * mm @ dof_vel
+    u = (
+        torch.transpose(j_eef, 1, 2) @ m_eef @ (kp * dpose).unsqueeze(-1)
+        - kv * mm @ dof_vel
+    )
 
     # Set tensor action
     gym.set_dof_actuation_force_tensor(sim, gymtorch.unwrap_tensor(u))

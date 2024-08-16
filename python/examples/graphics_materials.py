@@ -15,19 +15,31 @@ Assimp Loading
 """
 
 import math
+
 import numpy as np
+from examples import ASSET_PATH, TEXTURE_PATH
+
 from isaacgym import gymapi, gymutil
 
 
 class AssetDesc:
-    def __init__(self, file_name, flip_visual_attachments=False, mesh_normal_mode=gymapi.FROM_ASSET):
+    def __init__(
+        self,
+        file_name,
+        flip_visual_attachments=False,
+        mesh_normal_mode=gymapi.FROM_ASSET,
+    ):
         self.file_name = file_name
         self.flip_visual_attachments = flip_visual_attachments
         self.mesh_normal_mode = mesh_normal_mode
 
 
 asset_descriptors = [
-    AssetDesc("urdf/ycb/010_potted_meat_can/010_potted_meat_can.urdf", False, gymapi.COMPUTE_PER_VERTEX),
+    AssetDesc(
+        "urdf/ycb/010_potted_meat_can/010_potted_meat_can.urdf",
+        False,
+        gymapi.COMPUTE_PER_VERTEX,
+    ),
     AssetDesc("mjcf/open_ai_assets/hand/shadow_hand.xml", False),
     AssetDesc("urdf/sektion_cabinet_model/urdf/sektion_cabinet.urdf", False),
     AssetDesc("urdf/franka_description/robots/franka_panda.urdf", True),
@@ -58,7 +70,12 @@ sim_params.use_gpu_pipeline = False
 if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 
 # add ground plane
 plane_params = gymapi.PlaneParams()
@@ -71,7 +88,7 @@ if viewer is None:
     quit()
 
 # load asset
-asset_root = "../../assets"
+
 
 assets = []
 for asset_desc in asset_descriptors:
@@ -80,12 +97,16 @@ for asset_desc in asset_descriptors:
 
         asset_options = gymapi.AssetOptions()
         asset_options.fix_base_link = True
-        asset_options.flip_visual_attachments = asset_desc.flip_visual_attachments
+        asset_options.flip_visual_attachments = (
+            asset_desc.flip_visual_attachments
+        )
         asset_options.use_mesh_materials = override
         asset_options.mesh_normal_mode = asset_desc.mesh_normal_mode
 
-        print("Loading asset '%s' from '%s'" % (asset_file, asset_root))
-        assets.append(gym.load_asset(sim, asset_root, asset_file, asset_options))
+        print("Loading asset '%s' from '%s'" % (asset_file, ASSET_PATH))
+        assets.append(
+            gym.load_asset(sim, ASSET_PATH, asset_file, asset_options)
+        )
 
 # set up the env grid
 num_per_row = 2

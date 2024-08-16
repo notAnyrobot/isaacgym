@@ -21,10 +21,12 @@ Modes can be set via command line arguments:
 Press 'R' to reset the  simulation
 """
 
-import numpy as np
-from isaacgym import gymutil
-from isaacgym import gymapi
 from math import sqrt
+
+import numpy as np
+from examples import ASSET_PATH
+
+from isaacgym import gymapi, gymutil
 
 # initialize gym
 gym = gymapi.acquire_gym()
@@ -33,9 +35,24 @@ gym = gymapi.acquire_gym()
 args = gymutil.parse_arguments(
     description="Collision Filtering: Demonstrates filtering of collisions within and between environments",
     custom_parameters=[
-        {"name": "--num_envs", "type": int, "default": 36, "help": "Number of environments to create"},
-        {"name": "--all_collisions", "action": "store_true", "help": "Simulate all collisions"},
-        {"name": "--no_collisions", "action": "store_true", "help": "Ignore all collisions"}])
+        {
+            "name": "--num_envs",
+            "type": int,
+            "default": 36,
+            "help": "Number of environments to create",
+        },
+        {
+            "name": "--all_collisions",
+            "action": "store_true",
+            "help": "Simulate all collisions",
+        },
+        {
+            "name": "--no_collisions",
+            "action": "store_true",
+            "help": "Ignore all collisions",
+        },
+    ],
+)
 
 # configure sim
 sim_params = gymapi.SimParams()
@@ -55,7 +72,12 @@ sim_params.use_gpu_pipeline = False
 if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 if sim is None:
     print("*** Failed to create sim")
     quit()
@@ -71,9 +93,9 @@ if viewer is None:
     quit()
 
 # load ball asset
-asset_root = "../../assets"
+
 asset_file = "urdf/ball.urdf"
-asset = gym.load_asset(sim, asset_root, asset_file, gymapi.AssetOptions())
+asset = gym.load_asset(sim, ASSET_PATH, asset_file, gymapi.AssetOptions())
 
 # set up the env grid
 num_envs = args.num_envs
@@ -106,7 +128,7 @@ for i in range(num_envs):
     radius = 0.2
     ball_spacing = 2.5 * radius
     min_coord = -0.5 * (n - 1) * ball_spacing
-    y = min_coord+4
+    y = min_coord + 4
     while n > 0:
         z = min_coord
         for j in range(n):
@@ -135,8 +157,12 @@ for i in range(num_envs):
                     collision_group = i
                     collision_filter = 0
 
-                ahandle = gym.create_actor(env, asset, pose, None, collision_group, collision_filter)
-                gym.set_rigid_body_color(env, ahandle, 0, gymapi.MESH_VISUAL_AND_COLLISION, color)
+                ahandle = gym.create_actor(
+                    env, asset, pose, None, collision_group, collision_filter
+                )
+                gym.set_rigid_body_color(
+                    env, ahandle, 0, gymapi.MESH_VISUAL_AND_COLLISION, color
+                )
 
                 x += ball_spacing
             z += ball_spacing
@@ -144,7 +170,9 @@ for i in range(num_envs):
         n -= 1
         min_coord = -0.5 * (n - 1) * ball_spacing
 
-gym.viewer_camera_look_at(viewer, None, gymapi.Vec3(20, 5, 20), gymapi.Vec3(0, 1, 0))
+gym.viewer_camera_look_at(
+    viewer, None, gymapi.Vec3(20, 5, 20), gymapi.Vec3(0, 1, 0)
+)
 
 # create a local copy of initial state, which we can send back for reset
 initial_state = np.copy(gym.get_sim_rigid_body_states(sim, gymapi.STATE_ALL))

@@ -14,8 +14,10 @@ Positional control of franka panda robot with a target attractor that the robot 
 """
 
 import math
-from isaacgym import gymapi
-from isaacgym import gymutil
+
+from examples import ASSET_PATH, TEXTURE_PATH
+
+from isaacgym import gymapi, gymutil
 
 # Initialize gym
 gym = gymapi.acquire_gym()
@@ -44,7 +46,12 @@ sim_params.use_gpu_pipeline = False
 if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 
 if sim is None:
     print("*** Failed to create sim")
@@ -61,7 +68,7 @@ plane_params = gymapi.PlaneParams()
 gym.add_ground(sim, plane_params)
 
 # Load franka asset
-asset_root = "../../assets"
+
 franka_asset_file = "urdf/franka_description/robots/franka_panda.urdf"
 
 asset_options = gymapi.AssetOptions()
@@ -69,9 +76,8 @@ asset_options.fix_base_link = True
 asset_options.flip_visual_attachments = True
 asset_options.armature = 0.01
 
-print("Loading asset '%s' from '%s'" % (franka_asset_file, asset_root))
-franka_asset = gym.load_asset(
-    sim, asset_root, franka_asset_file, asset_options)
+print("Loading asset '%s' from '%s'" % (franka_asset_file, ASSET_PATH))
+franka_asset = gym.load_asset(sim, ASSET_PATH, franka_asset_file, asset_options)
 
 # Set up the env grid
 num_envs = 36
@@ -102,7 +108,9 @@ axes_geom = gymutil.AxesGeometry(0.1)
 # Create an wireframe sphere
 sphere_rot = gymapi.Quat.from_euler_zyx(0.5 * math.pi, 0, 0)
 sphere_pose = gymapi.Transform(r=sphere_rot)
-sphere_geom = gymutil.WireframeSphereGeometry(0.03, 12, 12, sphere_pose, color=(1, 0, 0))
+sphere_geom = gymutil.WireframeSphereGeometry(
+    0.03, 12, 12, sphere_pose, color=(1, 0, 0)
+)
 
 print("Creating %d environments" % num_envs)
 num_per_row = int(math.sqrt(num_envs))
@@ -115,41 +123,49 @@ for i in range(num_envs):
     # add franka
     franka_handle = gym.create_actor(env, franka_asset, pose, "franka", i, 2)
     body_dict = gym.get_actor_rigid_body_dict(env, franka_handle)
-    props = gym.get_actor_rigid_body_states(env, franka_handle, gymapi.STATE_POS)
-    hand_handle = body = gym.find_actor_rigid_body_handle(env, franka_handle, franka_hand)
+    props = gym.get_actor_rigid_body_states(
+        env, franka_handle, gymapi.STATE_POS
+    )
+    hand_handle = body = gym.find_actor_rigid_body_handle(
+        env, franka_handle, franka_hand
+    )
 
     # Initialize the attractor
-    attractor_properties.target = props['pose'][:][body_dict[franka_hand]]
+    attractor_properties.target = props["pose"][:][body_dict[franka_hand]]
     attractor_properties.target.p.y -= 0.1
     attractor_properties.target.p.z = 0.1
     attractor_properties.rigid_handle = hand_handle
 
     # Draw axes and sphere at attractor location
     gymutil.draw_lines(axes_geom, gym, viewer, env, attractor_properties.target)
-    gymutil.draw_lines(sphere_geom, gym, viewer, env, attractor_properties.target)
+    gymutil.draw_lines(
+        sphere_geom, gym, viewer, env, attractor_properties.target
+    )
 
     franka_handles.append(franka_handle)
-    attractor_handle = gym.create_rigid_body_attractor(env, attractor_properties)
+    attractor_handle = gym.create_rigid_body_attractor(
+        env, attractor_properties
+    )
     attractor_handles.append(attractor_handle)
 
 # get joint limits and ranges for Franka
 franka_dof_props = gym.get_actor_dof_properties(envs[0], franka_handles[0])
-franka_lower_limits = franka_dof_props['lower']
-franka_upper_limits = franka_dof_props['upper']
+franka_lower_limits = franka_dof_props["lower"]
+franka_upper_limits = franka_dof_props["upper"]
 franka_ranges = franka_upper_limits - franka_lower_limits
 franka_mids = 0.5 * (franka_upper_limits + franka_lower_limits)
 franka_num_dofs = len(franka_dof_props)
 
 # override default stiffness and damping values
-franka_dof_props['stiffness'].fill(1000.0)
-franka_dof_props['damping'].fill(1000.0)
+franka_dof_props["stiffness"].fill(1000.0)
+franka_dof_props["damping"].fill(1000.0)
 
 # Give a desired pose for first 2 robot joints to improve stability
 franka_dof_props["driveMode"][0:2] = gymapi.DOF_MODE_POS
 
 franka_dof_props["driveMode"][7:] = gymapi.DOF_MODE_POS
-franka_dof_props['stiffness'][7:] = 1e10
-franka_dof_props['damping'][7:] = 1.0
+franka_dof_props["stiffness"][7:] = 1e10
+franka_dof_props["damping"][7:] = 1.0
 
 for i in range(num_envs):
     gym.set_actor_dof_properties(envs[i], franka_handles[i], franka_dof_props)
@@ -159,7 +175,9 @@ def update_franka(t):
     gym.clear_lines(viewer)
     for i in range(num_envs):
         # Update attractor target from current franka state
-        attractor_properties = gym.get_attractor_properties(envs[i], attractor_handles[i])
+        attractor_properties = gym.get_attractor_properties(
+            envs[i], attractor_handles[i]
+        )
         pose = attractor_properties.target
         pose.p.x = 0.2 * math.sin(1.5 * t - math.pi * float(i) / num_envs)
         pose.p.y = 0.7 + 0.1 * math.cos(2.5 * t - math.pi * float(i) / num_envs)
@@ -177,10 +195,14 @@ for i in range(num_envs):
     gym.set_actor_dof_properties(envs[i], franka_handles[i], franka_dof_props)
 
     # Set ranka pose so that each joint is in the middle of its actuation range
-    franka_dof_states = gym.get_actor_dof_states(envs[i], franka_handles[i], gymapi.STATE_NONE)
+    franka_dof_states = gym.get_actor_dof_states(
+        envs[i], franka_handles[i], gymapi.STATE_NONE
+    )
     for j in range(franka_num_dofs):
-        franka_dof_states['pos'][j] = franka_mids[j]
-    gym.set_actor_dof_states(envs[i], franka_handles[i], franka_dof_states, gymapi.STATE_POS)
+        franka_dof_states["pos"][j] = franka_mids[j]
+    gym.set_actor_dof_states(
+        envs[i], franka_handles[i], franka_dof_states, gymapi.STATE_POS
+    )
 
 # Point camera at environments
 cam_pos = gymapi.Vec3(-4.0, 4.0, -1.0)

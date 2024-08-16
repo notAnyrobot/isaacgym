@@ -18,21 +18,29 @@ Requires Pillow (formerly PIL) to write images from python. Use `pip install pil
  to get Pillow.
 """
 
-
 import os
+
 import numpy as np
-from isaacgym import gymapi
-from isaacgym import gymutil
+from examples import ASSET_PATH, TEXTURE_PATH
+
+from isaacgym import gymapi, gymutil
 
 # acquire the gym interface
 gym = gymapi.acquire_gym()
 
 # parse arguments
-args = gymutil.parse_arguments(description="Graphics Example",
-                               headless=True,
-                               custom_parameters=[
-                                   {"name": "--save_images", "action": "store_true", "help": "Write RGB and Depth Images To Disk"},
-                                   {"name": "--up_axis_z", "action": "store_true", "help": ""}])
+args = gymutil.parse_arguments(
+    description="Graphics Example",
+    headless=True,
+    custom_parameters=[
+        {
+            "name": "--save_images",
+            "action": "store_true",
+            "help": "Write RGB and Depth Images To Disk",
+        },
+        {"name": "--up_axis_z", "action": "store_true", "help": ""},
+    ],
+)
 
 if args.save_images:
     from PIL import Image as im
@@ -49,7 +57,12 @@ if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
 # create sim
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 if sim is None:
     print("*** Failed to create sim")
     quit()
@@ -65,7 +78,7 @@ if not args.headless:
     # create viewer using the default camera properties
     viewer = gym.create_viewer(sim, gymapi.CameraProperties())
     if viewer is None:
-        raise ValueError('*** Failed to create viewer')
+        raise ValueError("*** Failed to create viewer")
 
 # set up the env grid
 num_envs = 1
@@ -76,14 +89,14 @@ env_upper = gymapi.Vec3(spacing, spacing, spacing)
 # list of assets which are used in this example
 repeat_assets = 8
 asset_files = []
-asset_root = "../../assets"
+
 for i in range(repeat_assets):
     asset_files.append("urdf/ball.urdf")
 
 # Load all assets
 assets = []
 for i in range(len(asset_files)):
-    asset_handle = gym.load_asset(sim, asset_root, asset_files[i])
+    asset_handle = gym.load_asset(sim, ASSET_PATH, asset_files[i])
     assets.append(asset_handle)
 
 # Create environments
@@ -103,7 +116,7 @@ for i in range(num_envs):
         d = 2 * spacing / grid
         x = d * (0.5 + np.mod(j, grid))
         y = 6.0
-        z = d * (0.5 + np.floor(j/grid))
+        z = d * (0.5 + np.floor(j / grid))
         actor_pose = gymapi.Transform()
         if sim_params.up_axis == gymapi.UpAxis.UP_AXIS_Z:
             actor_pose.p = gymapi.Vec3(x, z, y)
@@ -111,7 +124,9 @@ for i in range(num_envs):
             actor_pose.p = gymapi.Vec3(x, y, z)
         actor_pose.r = gymapi.Quat(-0.707107, 0.0, 0.0, 0.707107)
         asset_name = "asset_%d" % j
-        handle = gym.create_actor(env, assets[j], actor_pose, asset_name, i, 1, 0)
+        handle = gym.create_actor(
+            env, assets[j], actor_pose, asset_name, i, 1, 0
+        )
         actor_handles[i].append(handle)
 
 
@@ -157,8 +172,18 @@ while True:
         for i in range(num_envs):
             for j in range(1):
                 # The gym utility to write images to disk is recommended only for RGB images.
-                rgb_filename = "graphics_images/rgb_env%d_cam%d_frame%d.png" % (i, j, frame_count)
-                gym.write_camera_image_to_file(sim, envs[i], camera_handles[i][j], gymapi.IMAGE_COLOR, rgb_filename)
+                rgb_filename = "graphics_images/rgb_env%d_cam%d_frame%d.png" % (
+                    i,
+                    j,
+                    frame_count,
+                )
+                gym.write_camera_image_to_file(
+                    sim,
+                    envs[i],
+                    camera_handles[i][j],
+                    gymapi.IMAGE_COLOR,
+                    rgb_filename,
+                )
 
     if not args.headless:
         # render the viewer
@@ -174,7 +199,7 @@ while True:
 
     frame_count = frame_count + 1
 
-print('Done')
+print("Done")
 
 # cleanup
 gym.destroy_viewer(viewer)

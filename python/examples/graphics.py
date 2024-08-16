@@ -23,20 +23,28 @@ Requires Pillow (formerly PIL) to write images from python. Use `pip install pil
  to get Pillow.
 """
 
-
 import os
+
 import numpy as np
-from isaacgym import gymapi
-from isaacgym import gymutil
+from examples import ASSET_PATH, TEXTURE_PATH
+
+from isaacgym import gymapi, gymutil
 
 # acquire the gym interface
 gym = gymapi.acquire_gym()
 
 # parse arguments
-args = gymutil.parse_arguments(description="Graphics Example",
-                               headless=True,
-                               custom_parameters=[
-                                   {"name": "--save_images", "action": "store_true", "help": "Write RGB and Depth Images To Disk"}])
+args = gymutil.parse_arguments(
+    description="Graphics Example",
+    headless=True,
+    custom_parameters=[
+        {
+            "name": "--save_images",
+            "action": "store_true",
+            "help": "Write RGB and Depth Images To Disk",
+        }
+    ],
+)
 
 
 if args.save_images:
@@ -58,7 +66,12 @@ if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
 # create sim
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 if sim is None:
     print("*** Failed to create sim")
     quit()
@@ -71,7 +84,7 @@ if not args.headless:
     # create viewer using the default camera properties
     viewer = gym.create_viewer(sim, gymapi.CameraProperties())
     if viewer is None:
-        raise ValueError('*** Failed to create viewer')
+        raise ValueError("*** Failed to create viewer")
 
 # set up the env grid
 num_envs = 8
@@ -82,22 +95,24 @@ env_upper = gymapi.Vec3(spacing, spacing, spacing)
 # list of assets which are used in this example
 repeat_assets = 8
 asset_files = []
-asset_root = "../../assets"
+
 for i in range(repeat_assets):
     asset_files.append("urdf/ball.urdf")
 
 # Load all assets
 assets = []
 for i in range(len(asset_files)):
-    asset_handle = gym.load_asset(sim, asset_root, asset_files[i])
+    asset_handle = gym.load_asset(sim, ASSET_PATH, asset_files[i])
     assets.append(asset_handle)
 
 # Load textures from file. Loads all .jpgs from the specified directory as textures
-texture_files = os.listdir("../../assets/textures/")
+texture_files = os.listdir("TEXTURE_PATH")
 texture_handles = []
 for file in texture_files:
     if file.endswith(".jpg"):
-        h = gym.create_texture_from_file(sim, os.path.join("../../assets/textures/", file))
+        h = gym.create_texture_from_file(
+            sim, os.path.join("TEXTURE_PATH", file)
+        )
         if h == gymapi.INVALID_HANDLE:
             print("Couldn't load texture %s" % file)
         else:
@@ -106,10 +121,14 @@ for file in texture_files:
 # Create a random RGB and a random grayscale texture in python arrays and
 # pass those to gym as a texture
 tex_dim = 128
-noise_texture = 255.0 * np.random.rand(tex_dim, tex_dim*4)
-texture_handles.append(gym.create_texture_from_buffer(sim, tex_dim, tex_dim, noise_texture.astype(np.uint8)))
+noise_texture = 255.0 * np.random.rand(tex_dim, tex_dim * 4)
+texture_handles.append(
+    gym.create_texture_from_buffer(
+        sim, tex_dim, tex_dim, noise_texture.astype(np.uint8)
+    )
+)
 
-grayscale_noise = np.zeros((tex_dim, tex_dim*4), dtype=np.uint8)
+grayscale_noise = np.zeros((tex_dim, tex_dim * 4), dtype=np.uint8)
 for i in range(tex_dim):
     offset = 0
     for j in range(tex_dim):
@@ -119,7 +138,9 @@ for i in range(tex_dim):
         grayscale_noise[i, offset + 2] = v  # blue
         grayscale_noise[i, offset + 3] = 255  # apha
         offset = offset + 4
-texture_handles.append(gym.create_texture_from_buffer(sim, tex_dim, tex_dim, grayscale_noise))
+texture_handles.append(
+    gym.create_texture_from_buffer(sim, tex_dim, tex_dim, grayscale_noise)
+)
 
 # Create environments
 actor_handles = [[]]
@@ -141,12 +162,14 @@ for i in range(num_envs):
             y = 6.0
         else:
             y = 0.25
-        z = d * (0.5 + np.floor(j/grid))
+        z = d * (0.5 + np.floor(j / grid))
         actor_pose = gymapi.Transform()
         actor_pose.p = gymapi.Vec3(x, y, z)
         actor_pose.r = gymapi.Quat(-0.707107, 0.0, 0.0, 0.707107)
         asset_name = "asset_%d" % j
-        handle = gym.create_actor(env, assets[j], actor_pose, asset_name, i, 1, 0)
+        handle = gym.create_actor(
+            env, assets[j], actor_pose, asset_name, i, 1, 0
+        )
         actor_handles[i].append(handle)
 
 
@@ -174,11 +197,19 @@ for i in range(num_envs):
     # in odd env only the position
     h2 = gym.create_camera_sensor(envs[i], camera_properties)
     camera_offset = gymapi.Vec3(1, 0, -1)
-    camera_rotation = gymapi.Quat.from_axis_angle(gymapi.Vec3(0, 1, 0), np.deg2rad(135))
+    camera_rotation = gymapi.Quat.from_axis_angle(
+        gymapi.Vec3(0, 1, 0), np.deg2rad(135)
+    )
     actor_handle = gym.get_actor_handle(envs[i], 0)
     body_handle = gym.get_actor_rigid_body_handle(envs[i], actor_handle, 0)
 
-    gym.attach_camera_to_body(h2, envs[i], body_handle, gymapi.Transform(camera_offset, camera_rotation), gymapi.FOLLOW_TRANSFORM)
+    gym.attach_camera_to_body(
+        h2,
+        envs[i],
+        body_handle,
+        gymapi.Transform(camera_offset, camera_rotation),
+        gymapi.FOLLOW_TRANSFORM,
+    )
     camera_handles[i].append(h2)
 
 
@@ -192,7 +223,13 @@ for i in range(num_envs):
         num_bodies = gym.get_actor_rigid_body_count(envs[i], actor_handle)
         for b in range(num_bodies):
             texture_index = np.mod(textures_applied, len(texture_handles))
-            gym.set_rigid_body_texture(envs[i], actor_handle, b, gymapi.MESH_VISUAL_AND_COLLISION, texture_handles[texture_index])
+            gym.set_rigid_body_texture(
+                envs[i],
+                actor_handle,
+                b,
+                gymapi.MESH_VISUAL_AND_COLLISION,
+                texture_handles[texture_index],
+            )
             textures_applied = textures_applied + 1
 
 
@@ -216,13 +253,25 @@ while True:
         for i in range(num_envs):
             for j in range(2):
                 # The gym utility to write images to disk is recommended only for RGB images.
-                rgb_filename = "graphics_images/rgb_env%d_cam%d_frame%d.png" % (i, j, frame_count)
-                gym.write_camera_image_to_file(sim, envs[i], camera_handles[i][j], gymapi.IMAGE_COLOR, rgb_filename)
+                rgb_filename = "graphics_images/rgb_env%d_cam%d_frame%d.png" % (
+                    i,
+                    j,
+                    frame_count,
+                )
+                gym.write_camera_image_to_file(
+                    sim,
+                    envs[i],
+                    camera_handles[i][j],
+                    gymapi.IMAGE_COLOR,
+                    rgb_filename,
+                )
 
                 # Retrieve image data directly. Use this for Depth, Segmentation, and Optical Flow images
                 # Here we retrieve a depth image, normalize it to be visible in an
                 # output image and then write it to disk using Pillow
-                depth_image = gym.get_camera_image(sim, envs[i], camera_handles[i][j], gymapi.IMAGE_DEPTH)
+                depth_image = gym.get_camera_image(
+                    sim, envs[i], camera_handles[i][j], gymapi.IMAGE_DEPTH
+                )
 
                 # -inf implies no depth value, set it to zero. output will be black.
                 depth_image[depth_image == -np.inf] = 0
@@ -231,11 +280,18 @@ while True:
                 depth_image[depth_image < -10] = -10
 
                 # flip the direction so near-objects are light and far objects are dark
-                normalized_depth = -255.0*(depth_image/np.min(depth_image + 1e-4))
+                normalized_depth = -255.0 * (
+                    depth_image / np.min(depth_image + 1e-4)
+                )
 
                 # Convert to a pillow image and write it to disk
-                normalized_depth_image = im.fromarray(normalized_depth.astype(np.uint8), mode="L")
-                normalized_depth_image.save("graphics_images/depth_env%d_cam%d_frame%d.jpg" % (i, j, frame_count))
+                normalized_depth_image = im.fromarray(
+                    normalized_depth.astype(np.uint8), mode="L"
+                )
+                normalized_depth_image.save(
+                    "graphics_images/depth_env%d_cam%d_frame%d.jpg"
+                    % (i, j, frame_count)
+                )
 
     if not args.headless:
         # render the viewer
@@ -251,7 +307,7 @@ while True:
 
     frame_count = frame_count + 1
 
-print('Done')
+print("Done")
 
 # cleanup
 gym.destroy_viewer(viewer)

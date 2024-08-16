@@ -15,10 +15,12 @@ Compute and visualize relative transforms for different locations on a cabinet
 - Visualize transforms using wireframe axes/sphere
 """
 
-import os
 import math
-from isaacgym import gymapi
-from isaacgym import gymutil
+import os
+
+from examples import ASSET_PATH, TEXTURE_PATH
+
+from isaacgym import gymapi, gymutil
 
 # Initialize gym
 gym = gymapi.acquire_gym()
@@ -48,7 +50,12 @@ sim_params.use_gpu_pipeline = False
 if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
-sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+sim = gym.create_sim(
+    args.compute_device_id,
+    args.graphics_device_id,
+    args.physics_engine,
+    sim_params,
+)
 
 if sim is None:
     print("*** Failed to create sim")
@@ -66,15 +73,15 @@ if viewer is None:
 
 # Load asset relative to the current working directory
 print("Working directory: %s" % os.getcwd())
-asset_root = "../../assets"
+
 asset_file = "urdf/sektion_cabinet_model/urdf/sektion_cabinet.urdf"
 asset_options = gymapi.AssetOptions()
 asset_options.armature = 0.01
 # Fix the base link of the cabinet so it does not move
 asset_options.fix_base_link = True
 asset_options.use_mesh_materials = True
-print("Loading asset '%s' from '%s'" % (asset_file, asset_root))
-asset = gym.load_asset(sim, asset_root, asset_file, asset_options)
+print("Loading asset '%s' from '%s'" % (asset_file, ASSET_PATH))
+asset = gym.load_asset(sim, ASSET_PATH, asset_file, asset_options)
 
 # Set up the environment grid with two environments
 num_envs = 2
@@ -100,27 +107,58 @@ class Cabinet:
 
     def get_grasp_points(self):
 
-        poses = gym.get_actor_rigid_body_states(self.env, self.actor, gymapi.STATE_POS)['pose']
+        poses = gym.get_actor_rigid_body_states(
+            self.env, self.actor, gymapi.STATE_POS
+        )["pose"]
 
         # Get pose for all of the handles
-        top_drawer_handle_pose = gymapi.Transform.from_buffer(poses[self.TOP_DRAWER_INDEX])
-        bottom_drawer_handle_pose = gymapi.Transform.from_buffer(poses[self.BOTTOM_DRAWER_INDEX])
-        left_door_handle_pose = gymapi.Transform.from_buffer(poses[self.LEFT_DOOR_INDEX])
-        right_door_handle_pose = gymapi.Transform.from_buffer(poses[self.RIGHT_DOOR_INDEX])
+        top_drawer_handle_pose = gymapi.Transform.from_buffer(
+            poses[self.TOP_DRAWER_INDEX]
+        )
+        bottom_drawer_handle_pose = gymapi.Transform.from_buffer(
+            poses[self.BOTTOM_DRAWER_INDEX]
+        )
+        left_door_handle_pose = gymapi.Transform.from_buffer(
+            poses[self.LEFT_DOOR_INDEX]
+        )
+        right_door_handle_pose = gymapi.Transform.from_buffer(
+            poses[self.RIGHT_DOOR_INDEX]
+        )
 
         # Offset drawer transforms to compute grasp locations
-        top_drawer_point = top_drawer_handle_pose.transform_point(self.DRAWER_GRASP)
-        bottom_drawer_point = bottom_drawer_handle_pose.transform_point(self.DRAWER_GRASP)
-        left_door_handle_point = left_door_handle_pose.transform_point(self.LEFT_DOOR_GRASP)
-        right_door_handle_point = right_door_handle_pose.transform_point(self.RIGHT_DOOR_GRASP)
+        top_drawer_point = top_drawer_handle_pose.transform_point(
+            self.DRAWER_GRASP
+        )
+        bottom_drawer_point = bottom_drawer_handle_pose.transform_point(
+            self.DRAWER_GRASP
+        )
+        left_door_handle_point = left_door_handle_pose.transform_point(
+            self.LEFT_DOOR_GRASP
+        )
+        right_door_handle_point = right_door_handle_pose.transform_point(
+            self.RIGHT_DOOR_GRASP
+        )
 
         # Create transform from grasp location and handle rotation
-        top_drawer_grasp = gymapi.Transform(top_drawer_point, top_drawer_handle_pose.r)
-        bottom_drawer_grasp = gymapi.Transform(bottom_drawer_point, bottom_drawer_handle_pose.r)
-        left_door_handle_grasp = gymapi.Transform(left_door_handle_point, left_door_handle_pose.r)
-        right_door_handle_grasp = gymapi.Transform(right_door_handle_point, right_door_handle_pose.r)
+        top_drawer_grasp = gymapi.Transform(
+            top_drawer_point, top_drawer_handle_pose.r
+        )
+        bottom_drawer_grasp = gymapi.Transform(
+            bottom_drawer_point, bottom_drawer_handle_pose.r
+        )
+        left_door_handle_grasp = gymapi.Transform(
+            left_door_handle_point, left_door_handle_pose.r
+        )
+        right_door_handle_grasp = gymapi.Transform(
+            right_door_handle_point, right_door_handle_pose.r
+        )
 
-        return top_drawer_grasp, bottom_drawer_grasp, left_door_handle_grasp, right_door_handle_grasp
+        return (
+            top_drawer_grasp,
+            bottom_drawer_grasp,
+            left_door_handle_grasp,
+            right_door_handle_grasp,
+        )
 
 
 cabinets = []
@@ -141,8 +179,8 @@ for i in range(num_envs):
     dof_props = gym.get_actor_dof_properties(env, ahandle)
 
     # Set stiffness and damping of joint drives
-    dof_props['stiffness'].fill(1000000.0)
-    dof_props['damping'].fill(500.0)
+    dof_props["stiffness"].fill(1000000.0)
+    dof_props["damping"].fill(500.0)
     dof_props["driveMode"] = gymapi.DOF_MODE_POS
     gym.set_actor_dof_properties(env, ahandle, dof_props)
     cabinets.append(cab)
@@ -158,7 +196,9 @@ axes_geom = gymutil.AxesGeometry(0.1)
 # Create a wireframe sphere
 sphere_rot = gymapi.Quat.from_euler_zyx(0.5 * math.pi, 0, 0)
 sphere_pose = gymapi.Transform(r=sphere_rot)
-sphere_geom = gymutil.WireframeSphereGeometry(0.02, 12, 12, sphere_pose, color=(1, 1, 0))
+sphere_geom = gymutil.WireframeSphereGeometry(
+    0.02, 12, 12, sphere_pose, color=(1, 1, 0)
+)
 
 while not gym.query_viewer_has_closed(viewer):
 
@@ -173,7 +213,12 @@ while not gym.query_viewer_has_closed(viewer):
         cab = cabinets[i]
 
         # Get the transforms we want to visualize
-        top_drawer_grasp, bottom_drawer_grasp, left_door_handle_grasp, right_door_handle_grasp = cab.get_grasp_points()
+        (
+            top_drawer_grasp,
+            bottom_drawer_grasp,
+            left_door_handle_grasp,
+            right_door_handle_grasp,
+        ) = cab.get_grasp_points()
 
         # Top drawer
         gymutil.draw_lines(axes_geom, gym, viewer, cab.env, top_drawer_grasp)
@@ -181,15 +226,25 @@ while not gym.query_viewer_has_closed(viewer):
 
         # Bottom drawer
         gymutil.draw_lines(axes_geom, gym, viewer, cab.env, bottom_drawer_grasp)
-        gymutil.draw_lines(sphere_geom, gym, viewer, cab.env, bottom_drawer_grasp)
+        gymutil.draw_lines(
+            sphere_geom, gym, viewer, cab.env, bottom_drawer_grasp
+        )
 
         # Left door
-        gymutil.draw_lines(axes_geom, gym, viewer, cab.env, left_door_handle_grasp)
-        gymutil.draw_lines(sphere_geom, gym, viewer, cab.env, left_door_handle_grasp)
+        gymutil.draw_lines(
+            axes_geom, gym, viewer, cab.env, left_door_handle_grasp
+        )
+        gymutil.draw_lines(
+            sphere_geom, gym, viewer, cab.env, left_door_handle_grasp
+        )
 
         # Right door
-        gymutil.draw_lines(axes_geom, gym, viewer, cab.env, right_door_handle_grasp)
-        gymutil.draw_lines(sphere_geom, gym, viewer, cab.env, right_door_handle_grasp)
+        gymutil.draw_lines(
+            axes_geom, gym, viewer, cab.env, right_door_handle_grasp
+        )
+        gymutil.draw_lines(
+            sphere_geom, gym, viewer, cab.env, right_door_handle_grasp
+        )
 
     # Update the viewer
     gym.step_graphics(sim)
