@@ -97,14 +97,12 @@ actor_handles = []
 camera_handles = []
 
 # Load textures from file
-texture_files = os.listdir("TEXTURE_PATH")
+texture_files = os.listdir(TEXTURE_PATH)
 loaded_texture_handle_list = []
 for file in texture_files:
     if file.endswith(".jpg"):
         loaded_texture_handle_list.append(
-            gym.create_texture_from_file(
-                sim, os.path.join("TEXTURE_PATH", file)
-            )
+            gym.create_texture_from_file(sim, os.path.join(TEXTURE_PATH, file))
         )
 
 # Sensor camera properties

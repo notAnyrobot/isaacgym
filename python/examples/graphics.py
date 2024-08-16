@@ -106,13 +106,11 @@ for i in range(len(asset_files)):
     assets.append(asset_handle)
 
 # Load textures from file. Loads all .jpgs from the specified directory as textures
-texture_files = os.listdir("TEXTURE_PATH")
+texture_files = os.listdir(TEXTURE_PATH)
 texture_handles = []
 for file in texture_files:
     if file.endswith(".jpg"):
-        h = gym.create_texture_from_file(
-            sim, os.path.join("TEXTURE_PATH", file)
-        )
+        h = gym.create_texture_from_file(sim, os.path.join(TEXTURE_PATH, file))
         if h == gymapi.INVALID_HANDLE:
             print("Couldn't load texture %s" % file)
         else:
